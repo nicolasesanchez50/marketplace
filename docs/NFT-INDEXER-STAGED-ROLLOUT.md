@@ -54,6 +54,15 @@ chain served by a local fake RPC. Raw output:
 Configuration: 1,001 blocks × 20 events/block × 3 collections = 20,020 events,
 250-block commit chunks, warm filesystem cache.
 
+The same benchmark at 1,000,100 events
+([`docs/evidence/raw/volume-1m.json`](evidence/raw/volume-1m.json): 10,001
+blocks × 100 events/block × 3 collections) confirms the shape at scale: live
+5.2 blocks/s / 524.1 events/s at 441.3 MB peak RSS (3,475 B/event, 3.47 GB
+database), overlay re-scan 134.2 blocks/s with 100% class-ABI-call reduction,
+and a crash at block 5,000 resumed to 1,000,000/1,000,000 events with 0 failed
+RPC calls. Peak RSS on the overlay and resume passes reached 2.7–2.8 GB, so
+size the staging container for ~3 GB before raising `blocks` past 10k.
+
 | Phase | Result |
 | --- | --- |
 | Live indexing (full rebuild from empty) | 14.7 blocks/s, 293.2 events/s, peak RSS 285.3 MB, 68.2 s wall |
@@ -187,5 +196,8 @@ worker configuration to its previous value; no contract state is involved.
 
 - [`evidence/raw/volume-2026-10-10.json`](evidence/raw/volume-2026-10-10.json) —
   volume, overlay and crash/resume benchmark (this document's numbers).
+- [`evidence/raw/volume-1m.json`](evidence/raw/volume-1m.json) — the same
+  benchmark at 1,000,100 events: capacity ceiling, database bytes/event and a
+  crash/resume integrity check (1,000,000/1,000,000 events, 0 failed RPC calls).
 - `pnpm backend:test` / `pnpm backend:pg:test` — the regression suites the
   coverage, adapter, backfill and ERC-1155 behaviour is pinned by.
