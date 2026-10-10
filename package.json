@@ -25,7 +25,7 @@
     "backend:index": "node services/marketplace-backend/src/worker.mjs index",
     "backend:discover": "node services/marketplace-backend/src/worker.mjs discover",
     "backend:bench:acquisition": "node services/marketplace-backend/bench/shared-acquisition.mjs",
-  "backend:bench:discovery": "node services/marketplace-backend/bench/discovery.mjs",
+    "backend:bench:discovery": "node services/marketplace-backend/bench/discovery.mjs",
     "backend:metadata": "node services/marketplace-backend/src/worker.mjs metadata",
     "contracts:devnet": "pnpm sdk:build && node scripts/contracts/devnet.mjs",
     "contracts:abi": "pnpm contracts:build && node scripts/contracts/export-abi.mjs",
@@ -48,7 +48,8 @@
     "railway:variable": "node scripts/railway/set-variable.mjs",
     "railway:edge": "node scripts/railway/edge-rules.mjs",
     "backend:pg:test": "node --test services/marketplace-backend/test/postgres/*.test.mjs",
-    "backend:pg": "node services/marketplace-backend/src/postgres/cli.mjs"
+    "backend:pg": "node services/marketplace-backend/src/postgres/cli.mjs",
+    "backend:bench:volume": "node services/marketplace-backend/bench/volume.mjs"
   },
   "dependencies": {
     "@biblio/marketplace": "workspace:*",

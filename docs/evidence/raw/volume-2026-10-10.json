@@ -1,0 +1,102 @@
+{
+  "benchmark": "epic-108 volume",
+  "generatedAt": "2026-10-10T05:44:52.080Z",
+  "environment": {
+    "node": "v22.22.2",
+    "platform": "linux",
+    "note": "Deterministic synthetic chain, local fake RPC, warm filesystem cache; network and real-RPC latency excluded by construction."
+  },
+  "config": {
+    "blocks": 1001,
+    "eventsPerBlock": 20,
+    "collections": 3,
+    "chunk": 250,
+    "phases": [
+      "live",
+      "overlay",
+      "recovery"
+    ]
+  },
+  "live": {
+    "wallMs": 68203,
+    "blocksPerSecond": 14.7,
+    "eventsPerSecond": 293.2,
+    "peakRssMb": 285.3,
+    "chunkMs": {
+      "p50": 17290,
+      "p95": 17535,
+      "max": 17535
+    },
+    "dbBytesAfter": 95379880,
+    "dbBytesPerEvent": 4760.4,
+    "dbBytesPerBlock": 95111.9,
+    "rpcCalls": {
+      "starknet_chainId": 5,
+      "starknet_getBlockWithTxHashes": 19,
+      "starknet_getEvents": 5,
+      "starknet_getClassHashAt": 15,
+      "starknet_getClass": 1,
+      "starknet_getBlockWithReceipts": 1001
+    },
+    "failedCalls": 0
+  },
+  "overlayRescan": {
+    "wallMs": 1459.5,
+    "blocksPerSecond": 685.8,
+    "peakRssMb": 348.9,
+    "classCalls": 0,
+    "classCallsFirstPass": 1,
+    "classCallReduction": "100% (class ABI cache)",
+    "failedCalls": 0
+  },
+  "recovery": {
+    "crashedAfterMs": 29959,
+    "crashedAtBlock": 500,
+    "resumeWallMs": 31670.7,
+    "resumeBlocksPerSecond": 15.8,
+    "peakRssMb": 361,
+    "recoveredEvents": 20000,
+    "expectedEvents": 20000,
+    "failedCalls": 0
+  },
+  "latencyMs": {
+    "starknet_chainId": {
+      "p50": 0.006,
+      "p95": 0.229,
+      "p99": 0.229,
+      "count": 15
+    },
+    "starknet_getBlockWithTxHashes": {
+      "p50": 0.009,
+      "p95": 0.075,
+      "p99": 0.196,
+      "count": 58
+    },
+    "starknet_getEvents": {
+      "p50": 4.935,
+      "p95": 107.22,
+      "p99": 107.22,
+      "count": 15
+    },
+    "starknet_getClassHashAt": {
+      "p50": 0.003,
+      "p95": 0.021,
+      "p99": 0.027,
+      "count": 35
+    },
+    "starknet_getClass": {
+      "p50": 0.017,
+      "p95": 0.017,
+      "p99": 0.017,
+      "count": 2
+    },
+    "starknet_getBlockWithReceipts": {
+      "p50": 0.1,
+      "p95": 0.25,
+      "p99": 0.541,
+      "count": 3003
+    }
+  },
+  "failedRpcCalls": 0,
+  "failures": []
+}
