@@ -103,8 +103,24 @@ Budgets are enforced in code (`src/indexer-options.mjs`), not by convention:
 
 Measured request shape per 250-block window: one unfiltered `getEvents`, one
 `getBlockWithReceipts` per block, `getClassHashAt` per newly seen collection and
-one `getClass` for the whole run — the class ABI is cached in
+one `getClass` for the whole run (`starknet_getClass` count 2 across the entire
+1M-event run, p95 0.012 ms) — the class ABI is cached in
 `chain.class_evidence`, which is why the overlay pass spends zero class calls.
+
+Request cost per window is independent of how many collections are registered,
+measured with `pnpm backend:bench:acquisition`
+([`docs/evidence/raw/shared-acquisition-2026-10-10.json`](evidence/raw/shared-acquisition-2026-10-10.json)):
+
+| Registered collections | `getEvents` scans per window | Legacy (one per collection) | Receipt calls | DB writes/event |
+| --- | --- | --- | --- | --- |
+| 1 | 1 | 1 | 51 | 3.54 |
+| 5 | 1 | 5 | 51 | 3.52 |
+| 20 | 1 | 20 | 51 | 3.52 |
+| 50 | 1 | 50 | 51 | 3.52 |
+
+Work still scales with event volume (wall time 0.21 s to 4.51 s across those
+runs), but RPC request count per window does not grow with collection count,
+and the benchmark exits non-zero if either budget breaks.
 
 Provisional targets derived from this run, to be confirmed against a real
 provider before rollout: sustained ≥5 blocks/s per worker at 20 events/block,
@@ -159,6 +175,38 @@ refuse overlapping jobs. Overlay delivery is idempotent — activity rows double
 as the per-event replay marker, so a duplicate delivery changes no count
 (regression-tested in `legacy-coverage.test.mjs`).
 
+## Incident stocktake
+
+No production incidents: this branch never served production traffic (see the
+scope split below). The incidents below are real build-time failures, each
+caught by a regression suite or a benchmark that exits non-zero — they are
+listed because they are the observed failure modes of this work, not
+hypotheticals:
+
+1. **Migration 006 shipped a column the schema did not have** (`fetched_at`).
+   The pg suite failed immediately; the fix was a new migration, never an
+   edit of applied SQL (the checksum guard in `migrate.mjs` enforces this).
+2. **Migration 008 was registered inside migration 007's list entry**
+   (`[7, "007-backfill-jobs.sql", "008-erc1155-balances.sql"]`), so it never
+   executed. Two pg tests failed loudly with
+   `relation "market.erc1155_balances" does not exist`; zero silent damage,
+   because the import path refuses to touch a table it cannot see.
+3. **pg/sqlite candidate ordering diverged** when the metadata quota
+   over-fetched: sqlite lacked the `, t.id` tiebreak postgres already had.
+   Caught by the replay-parity test comparing both engines row for row.
+4. **`chainState` crashed on parity configs without `chainId`** — the same
+   replay-parity test failed with `Expected an unsigned decimal or hex
+   integer` from `collectionKey`. Fixed by guarding the lookup.
+5. **Duplicate delivery double-counted delta state** (ERC-1155 balances,
+   volume stats) when the overlay backfill re-projected already-indexed
+   blocks. Caught by the e2e replay assertion; fixed by making the activity
+   row the per-event idempotency marker, which also pins the "one batch
+   writes one activity" rule.
+6. **Fixture drift in coverage signatures** (transaction hash mismatch
+   between `getEvents` and receipts) broke benches twice. Not product bugs —
+   but evidence that `EVENT_COVERAGE` fails closed the moment expected and
+   observed events disagree.
+
 ## Staged rollout
 
 1. **Shadow.** Run discovery + indexing + classification against the production
@@ -183,6 +231,31 @@ as the per-event replay marker, so a duplicate delivery changes no count
 Rollback at any stage is the rewind/restore path above plus returning the
 worker configuration to its previous value; no contract state is involved.
 
+## Scope split: no live mainnet work, and why
+
+This branch ships code, tests and synthetic evidence only. It did not query a
+mainnet RPC with the new code paths, did not deploy to staging or production,
+and did not enable any collection for trading. The justification:
+
+- The evidence acceptance for this epic is the repository's own runnable bench
+  environment — deterministic seeds, warm caches, stable local RPC. Numbers
+  from a real provider depend on project quota and credentials that are not
+  exercised from a feature branch, and the capacity table above says so
+  explicitly instead of presenting provider latency we did not measure.
+- Mainnet-specific contract coverage (the acceptance's attestation registry,
+  oracle-of-last-resort classifiers) requires external services that do not
+  exist in this repository; inventing a classification without them would
+  violate the no-invented-state rule the classifier enforces.
+- Enabling anything for trading is an administrator action through the
+  reviewed registry, explicitly outside this epic.
+
+Therefore there are no rollout activity logs to report yet — that is the
+honest scope statement, not an omission. The pre-mainnet sequence is the
+staged rollout above: shadow against the production RPC with bounded spans,
+staging re-measure of the volume benchmark against the real provider, then
+the OPERATIONS release procedure. Rollout observation starts at the shadow
+stage; the incident stocktake above is the build-time substitute.
+
 ## Alerts worth wiring
 
 - `index_progress` / `discover_progress` stall: head distance grows while the
@@ -199,5 +272,9 @@ worker configuration to its previous value; no contract state is involved.
 - [`evidence/raw/volume-1m.json`](evidence/raw/volume-1m.json) — the same
   benchmark at 1,000,100 events: capacity ceiling, database bytes/event and a
   crash/resume integrity check (1,000,000/1,000,000 events, 0 failed RPC calls).
+- [`evidence/raw/shared-acquisition-2026-10-10.json`](evidence/raw/shared-acquisition-2026-10-10.json) —
+  request-cost scaling with registered collections (1/5/20/50), budget
+  assertions included.
 - `pnpm backend:test` / `pnpm backend:pg:test` — the regression suites the
-  coverage, adapter, backfill and ERC-1155 behaviour is pinned by.
+  coverage, adapter, backfill and ERC-1155 behaviour is pinned by (151 native
+  and 53 PostgreSQL tests green at the evidence commit).
